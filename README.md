@@ -1,0 +1,1 @@
+ai aided video labeler. make use of grounding dino for object detection
