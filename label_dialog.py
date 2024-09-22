@@ -1,11 +1,11 @@
 import sys
 import cv2
 import numpy as np
+from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout,
     QTableWidgetItem, QLineEdit
 )
-from PyQt6.QtGui import QImage, QPixmap
 
 import asyncio
 from api import image_detect_api
@@ -16,7 +16,6 @@ class ImageLabeling(QWidget):
         self.image = image
         self.caption = caption
         self.annotations = []
-
         self.setWindowTitle("Image Annotation")
         self.setGeometry(100, 100, 800, 600)
 
@@ -73,8 +72,9 @@ class ImageLabeling(QWidget):
         self.image_label.setPixmap(QPixmap.fromImage(q_image))  # Convert to QPixmap
     
     def load_annotations(self):
-        response = asyncio.run(image_detect_api(self.image, self.caption))
-        # response = {  # 临时使用测试数据，节省api调用次数
+        labeling_result = asyncio.run(image_detect_api(self.image, self.caption))
+        # response = {  # 样本
+        #     'msg': 'success'
         #     'boxes': [
         #         [0.2300889492034912, 0.43166184425354004, 0.42723730206489563, 0.5608834624290466], 
         #         [0.7489202618598938, 0.45753565430641174, 0.4995116591453552, 0.7285897731781006]
@@ -82,10 +82,14 @@ class ImageLabeling(QWidget):
         #     'logits': [0.5680023431777954, 0.5597519278526306], 
         #     'phrases': ['fruit', 'fruit']
         # }
-        if 'boxes' in response:
-            self.annotations = response['boxes']
+        if not labeling_result['msg'] == 'success':
+            print(labeling_result['msg'])
+            return
+
+        if 'boxes' in labeling_result:
+            self.annotations = labeling_result['boxes']
             for i in range(len(self.annotations)):
-                self.annotations[i].append(response['phrases'][i])  # 默认标签
+                self.annotations[i].append(labeling_result['phrases'][i])  # 默认标签
             
             self.setup_table()
         self.load_image()

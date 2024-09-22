@@ -20,14 +20,19 @@ async def image_detect_api(image: np.ndarray, caption: str = 'fruit'):
         'return_type': (None, 'annotation')
     }
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, files=files)
-        
-        # Check if the request was successful
-        if response.status_code == 200:
-            return response.json()  # or response.text if you expect plain text
-        else:
-            return {"error": response.status_code, "message": response.text}
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, files=files)
+            
+            if response.status_code == 200:  # 请求成功
+                result = response.json()
+                result['msg'] = "success"
+                return result
+            return {"msg": f"{response.status_code}, {response.text}"}  # 状态码不是200，则认为是错误
+    except Exception as e:
+        # 捕获异常并返回具体的错误信息
+        error_message = f"请求出错: {str(e)}"
+        return {"msg": error_message}
         
 """
 {

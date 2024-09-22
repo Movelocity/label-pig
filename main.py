@@ -1,15 +1,12 @@
 import sys
-import cv2
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont, QImage, QPixmap
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel,
-    QSlider, QLineEdit, QPushButton, QTextEdit, 
-    QVBoxLayout, QHBoxLayout, QBoxLayout,
-    QStyle, QDialog
+    QApplication, QVBoxLayout, QPushButton, QSlider, 
+    QWidget, QHBoxLayout, QLineEdit, QBoxLayout, QLabel
 )
-# from api import image_detect_api
+from video_player import VideoPlayer
 from label_dialog import ImageLabeling
+import cv2
 
 stylesheet = """
 QWidget {
@@ -36,238 +33,131 @@ QSlider::handle:horizontal {
 }
 """
 
-class ConfigDialog(QDialog):
-    def __init__(self, parent, config_items:dict):
-        super().__init__(parent)
-        self.setWindowTitle("全局参数配置")
-        self.setFixedSize(400, 200)
-
-        self.layout : QBoxLayout = QVBoxLayout()
-
-        self.input_widgets = {}
-
-        for item_name, item_body in config_items.items():
-            label = QLabel(f"{item_body['label']}:")
-            input_widget = QLineEdit()
-            input_widget.setText(str(item_body.get('value', '')))
-            self.input_widgets[item_name] = input_widget
-
-            row_layout = QHBoxLayout()
-            row_layout.addWidget(label)
-            row_layout.addWidget(input_widget)
-            row_widget = QWidget()
-            row_widget.setLayout(row_layout)
-            self.layout.addWidget(row_widget)
-
-        self.ok_button = QPushButton("OK")
-        self.ok_button.clicked.connect(self.accept)
-        self.layout.addWidget(self.ok_button)
-
-        self.setLayout(self.layout)
-
-    def get_values(self):
-        config = {}
-        for name, widget in self.input_widgets.items():
-            try:
-                config[name] = float(widget.text())
-            except ValueError:
-                config[name] = widget.text()
-        return config
-
-class VideoPlayer(QWidget):
+class PlayState:
     def __init__(self):
+        self.slider = None
+        self.time_input = None
+        self.seek_video_fn: function = None
+        self.frame_rate = 1
+        self.max_frame = 2
+    def update_position(self, frame_position:int, frame_rate):
+        if self.slider is not None:
+            self.slider.setValue(frame_position)
+        if self.time_input is not None:
+            minute_float = frame_position / frame_rate
+            minute = int(minute_float / 60)
+            second = int(minute_float % 60)
+            self.time_input.setText(f"{minute:02d}:{second:02d}")
+
+    def set_max_frame(self, max_frame):
+        print("set slider max: ", max_frame)
+        if self.slider is not None:
+            self.slider.setMaximum(max_frame)  # 视频总帧数
+        self.max_frame = max_frame
+
+    def seek_video_by_slider(self):
+        frame_position = self.slider.value()
+        print("seek to: ", frame_position)
+        if self.seek_video_fn is not None:
+            self.seek_video_fn(frame_position)
+        
+    def seek_video_by_time(self):
+        time_str = self.time_input.text()
+        print('time: ', time_str)
+        if not time_str: return
+
+        if ":" in time_str:
+            minute, second = map(int, time_str.split(":"))
+            frame_position = (minute * 60 + second) * self.frame_rate
+            if frame_position > self.max_frame: return
+            if self.seek_video_fn is not None:
+                self.seek_video_fn(frame_position)
+
+class MainWidget(QWidget):
+    def __init__(self, video_path):
         super().__init__()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.nextFrameSlot)
-        self.cap = None
-        self.frame_rate = 30
-        self.is_paused = False
-        self.is_playing = False
-        self.subtitles = []
-        self.auto_label_text = ''
+        self.play_state = PlayState()
+        # 创建视频播放器组件
+        self.video_player = VideoPlayer(video_path, self.play_state)
 
-        self.config_items = {
-            'frame_rate': {'label': '帧率(fps)', 'value': 30},
-        }
+        # 布局设置
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.video_player)
+        self.init_controls_ui(main_layout)
+        self.init_labeling_ui(main_layout)
+        self.setLayout(main_layout)
+        # self.label_current_frame()
 
-        self.initUI()
+    def init_controls_ui(self, main_layout:QBoxLayout):
+        # 创建播放/停止按钮
+        self.play_button = QPushButton("Play")
+        self.play_button.clicked.connect(self.toggle_play)
 
-    def open_config_dialog(self):
-        dialog = ConfigDialog(None, self.config_items)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            config_values = dialog.get_values()
-            print(config_values)
-
-    def initVideoPlayUI(self, layout:QBoxLayout):
-        # 显示图片每一帧，随时间刷新
-        self.video_frame = QLabel('Video Frame')
-        self.video_frame.setMinimumSize(640, 480)
-        self.video_frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 视频播放时间轴
-        self.slider = QSlider(Qt.Orientation.Horizontal, self)
-        self.slider.sliderPressed.connect(self.pause_video)
-        self.slider.sliderReleased.connect(self.seek_video)
+        # 创建拖动条
+        self.play_state.slider = QSlider(Qt.Orientation.Horizontal)
+        self.play_state.slider.setRange(0, self.play_state.max_frame)  # 假设视频长度为1000个单位
+        self.play_state.slider.sliderPressed.connect(self.pause_video)
+        self.play_state.slider.sliderReleased.connect(self.play_state.seek_video_by_slider)
 
         # 调节时间轴的文本输入框
-        self.time_input = QLineEdit()
-        self.time_input.setMaximumWidth(80)
-        self.time_input.returnPressed.connect(self.seek_video_by_time)
+        self.play_state.time_input = QLineEdit("00:00")
+        self.play_state.time_input.setReadOnly(False)
+        self.play_state.time_input.setMaximumWidth(80)
+        self.play_state.time_input.returnPressed.connect(self.play_state.seek_video_by_time)
 
-        # 视频播放按钮
-        self.play_button = QPushButton('Play')
-        self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
-        self.play_button.clicked.connect(self.play_pause_video)
+        control_layout = QHBoxLayout()
+        control_layout.addWidget(self.play_button)
+        control_layout.addWidget(self.play_state.slider)
+        control_layout.addWidget(self.play_state.time_input)
+        main_layout.addLayout(control_layout)
 
-        layout.addWidget(self.video_frame)
-        row1 = QHBoxLayout()
-        row1.addWidget(self.slider, stretch=2)
-        row1.addWidget(self.time_input)
-        layout.addLayout(row1)
-
-    def initTextLabelUI(self, layout:QBoxLayout):
-        self.auto_label_hint = QLabel('自动标注：')
-        self.auto_label_name = QLineEdit()
-        self.auto_label_name.setPlaceholderText('cat . dog . bird')
-        self.auto_label_name.setText('pig')
+    def init_labeling_ui(self, main_layout:QBoxLayout):
+        auto_label_hint = QLabel('自动标注：')
+        self.labeling_prompt = QLineEdit()
+        self.labeling_prompt.setPlaceholderText('可指定多种物体,以 . 分隔: cat . dog . bird')
+        self.labeling_prompt.setText('pig')
         self.auto_label_btn = QPushButton('自动标注')
-        self.auto_label_btn.clicked.connect(self.auto_label)
-        # # 标注文本输入
-        # self.subtitle_input = QTextEdit()
-        # self.subtitle_input.setPlaceholderText('Enter subtitle here...')
-        # # 保存该帧的标注文本
-        # self.save_subtitle_button = QPushButton('保存标注')
-        # self.save_subtitle_button.clicked.connect(self.save_subtitle)
+        self.auto_label_btn.clicked.connect(self.label_current_frame)
 
         controls_layout = QHBoxLayout()
-        controls_layout.addWidget(self.play_button)
-        controls_layout.addWidget(self.auto_label_hint)
-        controls_layout.addWidget(self.auto_label_name)
+        controls_layout.addWidget(auto_label_hint)
+        controls_layout.addWidget(self.labeling_prompt)
         controls_layout.addWidget(self.auto_label_btn)
 
-        layout.addLayout(controls_layout)
+        main_layout.addLayout(controls_layout)
 
-        # label_layout = QHBoxLayout()
-        # label_layout.addWidget(self.subtitle_input)
-        # label_layout.addWidget(self.save_subtitle_button)
-        # layout.addLayout(label_layout)
+    def play_video(self):
+        self.video_player.play()
+        self.play_button.setText("Stop")
 
-    def auto_label(self):
-        self.currentLabeling = ImageLabeling(image=self.current_frame, caption=self.auto_label_name.text())
-        self.currentLabeling.show()
-    def initUI(self):
-        # Set the font for the entire application (optional)
-        font = QFont("Arial", 10)
-        self.setFont(font)
+    def pause_video(self):
+        self.video_player.stop()
+        self.play_button.setText("Play")
 
-        # 设置样式
-        self.setStyleSheet(stylesheet)
-
-        # Create a slider for setting frame rate
-        # self.frame_rate_input = QLineEdit(str(self.frame_rate),self)
-        # self.frame_rate_input.returnPressed.connect(self.change_frame_rate)
-
-        # Layout
-        layout = QVBoxLayout()
-        self.initVideoPlayUI(layout)
-        self.initTextLabelUI(layout)
-
-        # self.config_btn = QPushButton('配置')
-        # self.config_btn.clicked.connect(self.open_config_dialog)
-        # layout.addWidget(self.config_btn)
-
-        self.setLayout(layout)
-        self.setWindowTitle("Video Player")
-
-    def load_video(self, video_path):
-        self.cap = cv2.VideoCapture(video_path)
-        self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS)
-        self.slider.setMaximum(int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))) # 视频总帧数
-        # self.frame_rate_input.setText(str(self.frame_rate))
-        self.nextFrameSlot()
-
-    def play_pause_video(self):
-        if self.is_playing:
+    def toggle_play(self):
+        if self.video_player.is_playing:
             self.pause_video()
         else:
             self.play_video()
 
-    def play_video(self):
-        if not self.is_playing and self.cap is not None:
-            self.is_playing = True
-            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
-            self.play_button.setText('Pause')
-            self.timer.start(int(1000 / self.frame_rate))
+    def label_current_frame(self):
+        image = self.video_player.current_frame
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        caption = self.labeling_prompt.text()
+        self.currentLabeling = ImageLabeling(image=image, caption=caption)
+        self.currentLabeling.show()
 
-    def pause_video(self):
-        if self.is_playing:
-            self.is_paused = True
-            self.is_playing = False
-            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
-            self.play_button.setText('Play')
-            self.timer.stop()
 
-    def nextFrameSlot(self):
-        ret, frame = self.cap.read()
-        if ret:
-            self.display_frame(frame)
-            self.slider.setValue(int(self.cap.get(cv2.CAP_PROP_POS_FRAMES)))
-            self.time_input.setText(f"{self.cap.get(cv2.CAP_PROP_POS_FRAMES) / self.frame_rate:.2f}s")
-        else:
-            self.timer.stop()
-
-    def seek_video(self):
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.slider.value())
-        self.nextFrameSlot()
-
-    def seek_video_by_time(self):
-        frame_num = int(float(self.time_input.text()) * self.frame_rate)
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-        self.nextFrameSlot()
-
-    def display_frame(self, frame):
-        # QtGUI 使用 RGB 颜色通道顺序
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        # 获取当前窗口大小
-        window_width = self.video_frame.width()
-        window_height = self.video_frame.height()
-        
-        # 缩放幅度
-        scale_factor = min(window_width / frame.shape[1], window_height / frame.shape[0], 1024 / frame.shape[1])
-        
-        # 缩放一帧图片
-        frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
-        self.current_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        height, width, channel = frame.shape
-        bytesPerLine = 3 * width
-        qImg = QImage(
-            frame.data, width, height, bytesPerLine, 
-            QImage.Format.Format_RGB888
-        )
-        pixmap = QPixmap.fromImage(qImg)
-        self.video_frame.setPixmap(pixmap)
-
-    def save_subtitle(self):
-        current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
-        timestamp = current_frame / self.frame_rate
-        subtitle_text = self.subtitle_input.toPlainText()
-        self.subtitles.append((timestamp, subtitle_text))
-        with open('subtitles.txt', 'a') as f:
-            f.write(f"{timestamp:.2f}-{subtitle_text}\n")
-        self.subtitle_input.clear()
-
-    def set_frame_rate(self, new_frame_rate):
-        if self.config_items['frame_rate']['value'] - new_frame_rate > 0.01:
-            print('update frame rate: ', self.frame_rate)
-            if self.is_playing:
-                self.timer.start(int(1000 / self.frame_rate))
-            self.config_items['frame_rate']['value'] = new_frame_rate
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    player = VideoPlayer()
-    player.resize(800, 600)
-    player.load_video('hunting_hog.mp4')  # Replace with your video path
-    player.show()
+    app.setStyleSheet(stylesheet)
+
+    # 视频文件路径
+    video_path = "hunting_hog.mp4"
+
+    player_widget = MainWidget(video_path)
+    player_widget.setWindowTitle("Video Player")
+    player_widget.resize(800, 600)
+    player_widget.show()
+
     sys.exit(app.exec())
