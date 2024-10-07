@@ -6,9 +6,29 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout,
     QTableWidgetItem, QLineEdit
 )
+import re
 
-import asyncio
-from api import image_detect_api
+
+# import asyncio
+import api as detection_api
+
+def increment_name(input_str):
+    # 使用正则表达式匹配 name 或 name+num 模式
+    match = re.match(r"^(\D+)(\d*)$", input_str)
+    
+    if match:
+        name = match.group(1)  # 提取name部分
+        num = match.group(2)   # 提取num部分
+
+        if num == "":
+            num = 1  # 如果没有num部分，将num设为1
+        else:
+            num = int(num) + 1  # 如果有num部分，则将其自增
+
+        return f"{name}{num}"
+    else:
+        return f"{name}1"
+    
 
 class ImageLabeling(QWidget):
     def __init__(self, image: np.ndarray, caption: str):
@@ -51,29 +71,51 @@ class ImageLabeling(QWidget):
         # Load annotations from API
         self.load_annotations()
 
-    def load_image(self):
+    def load_image(self):  # 绘图
         height, width, channel = self.image.shape
         bytes_per_line = 3 * width
 
         # Clear previous drawings on the image
         image_copy = self.image.copy()
 
+        # Define a list of colors for different boxes
+        colors = [
+            (230, 100, 0), (0, 177, 177), (0, 0, 222),
+            (211, 222, 0), (200, 0, 200), (0, 255, 255)
+        ]
+
+        # Calculate font scale based on image size
+        font_scale = max(0.5, min(width, height) / 800.0)
+
         # Draw boxes and labels on the image before displaying it
-        for box in self.annotations:
+        for i, box in enumerate(self.annotations):
             cx, cy, w, h = (box[0] * width, box[1] * height, box[2] * width, box[3] * height)
             w_2, h_2 = (w / 2, h / 2)
-            cv2.rectangle(image_copy, (int(cx - w_2), int(cy - h_2)), (int(cx + w_2), int(cy + h_2)), (230, 100, 0), 2)
+            color = colors[i % len(colors)]
+            cv2.rectangle(image_copy, (int(cx - w_2), int(cy - h_2)), (int(cx + w_2), int(cy + h_2)), color, 2)
             
-            # Draw the label text
+            # Draw the label text with background
             label_text = box[4] if len(box) > 4 else "Unknown"
-            cv2.putText(image_copy, label_text, (int(cx - w_2), int(cy - h_2) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            (text_width, text_height), baseline = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
+            text_x = int(cx - w_2)
+            text_y = int(cy - h_2) - 6
+            padding = 2
+
+            # Draw the background rectangle for text
+            cv2.rectangle(image_copy, (text_x, text_y - text_height - padding), 
+                        (text_x + text_width + padding * 2, text_y + baseline), color, cv2.FILLED)
+
+            # Draw the text over the background
+            cv2.putText(image_copy, label_text, (text_x + padding, text_y - padding), 
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 1)
 
         q_image = QImage(image_copy.data, width, height, bytes_per_line, QImage.Format.Format_BGR888)
         self.image_label.setPixmap(QPixmap.fromImage(q_image))  # Convert to QPixmap
     
     def load_annotations(self):
-        labeling_result = asyncio.run(image_detect_api(self.image, self.caption))
-        # response = {  # 样本
+        # labeling_result = asyncio.run(detection_api.image_detect_api_async(self.image, self.caption))
+        labeling_result = detection_api.image_detect_api(self.image, self.caption)
+        # labeling_result = {  # 样本
         #     'msg': 'success'
         #     'boxes': [
         #         [0.2300889492034912, 0.43166184425354004, 0.42723730206489563, 0.5608834624290466], 
@@ -85,12 +127,17 @@ class ImageLabeling(QWidget):
         if not labeling_result['msg'] == 'success':
             print(labeling_result['msg'])
             return
-
+        label_set = set()
         if 'boxes' in labeling_result:
             self.annotations = labeling_result['boxes']
             for i in range(len(self.annotations)):
-                self.annotations[i].append(labeling_result['phrases'][i])  # 默认标签
-            
+                label = labeling_result['phrases'][i]
+                label = increment_name(label)
+                if label in label_set:
+                    label = increment_name(label)
+                label_set.add(label)
+                self.annotations[i].append(label)  # 默认标签
+                
             self.setup_table()
         self.load_image()
 
@@ -119,7 +166,7 @@ class ImageLabeling(QWidget):
             y = float(self.table.cellWidget(row, 1).text())
             width = float(self.table.cellWidget(row, 2).text())
             height = float(self.table.cellWidget(row, 3).text())
-            label = self.table.cellWidget(row, 4).text()
+            label = self.table.cellWidget(row, 4).text().strip().replace(' ', '_')
             self.annotations[row] = [x, y, width, height] + [label]  # Update annotation with new label
         
         self.load_image()  # Reload image to reflect changes
@@ -127,11 +174,11 @@ class ImageLabeling(QWidget):
     def save_annotations(self):
         saved_annotations = []
         for row in range(self.table.rowCount()):
-            x = float(self.table.item(row, 0).text())
-            y = float(self.table.item(row, 1).text())
-            width = float(self.table.item(row, 2).text())
-            height = float(self.table.item(row, 3).text())
-            label = self.table.cellWidget(row, 4).text()
+            x = float(self.table.cellWidget(row, 0).text())
+            y = float(self.table.cellWidget(row, 1).text())
+            width = float(self.table.cellWidget(row, 2).text())
+            height = float(self.table.cellWidget(row, 3).text())
+            label = self.table.cellWidget(row, 4).text().strip().replace(' ', '_')
             saved_annotations.append((x, y, width, height, label))
 
         print("Saved Annotations:", saved_annotations)

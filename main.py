@@ -7,31 +7,7 @@ from PyQt6.QtWidgets import (
 from video_player import VideoPlayer
 from label_dialog import ImageLabeling
 import cv2
-
-stylesheet = """
-QWidget {
-    background-color: #2b2b2b;
-    color: #ffffff;
-}
-QLineEdit, QTextEdit, QPushButton {
-    background-color: #3c3c3c;
-    border: 1px solid #5a5a5a;
-    border-radius: 5px;
-    padding: 5px;
-}
-QSlider::groove:horizontal {
-    border: 1px solid #5a5a5a;
-    height: 8px;
-    background: #3c3c3c;
-}
-QSlider::handle:horizontal {
-    background: #5a5a5a;
-    border: 1px solid #5a5a5a;
-    width: 18px;
-    margin: -2px 0;
-    border-radius: 3px;
-}
-"""
+from common import stylesheet
 
 class PlayState:
     def __init__(self):
@@ -144,6 +120,7 @@ class MainWidget(QWidget):
         image = self.video_player.current_frame
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         caption = self.labeling_prompt.text()
+        # TODO: 传递帧序号，保存的时候用得到
         self.currentLabeling = ImageLabeling(image=image, caption=caption)
         self.currentLabeling.show()
 
@@ -153,7 +130,7 @@ if __name__ == "__main__":
     app.setStyleSheet(stylesheet)
 
     # 视频文件路径
-    video_path = "hunting_hog.mp4"
+    video_path = "demo.mp4"
 
     player_widget = MainWidget(video_path)
     player_widget.setWindowTitle("Video Player")

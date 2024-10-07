@@ -47,7 +47,6 @@ class VideoPlayer(QGraphicsView):
         if not self.is_playing:
             self.timer.start(self.frame_rate)  # 设置刷新频率为每30毫秒（约33帧每秒）
             self.is_playing = True
-            # 
 
     def stop(self):
         if self.is_playing:

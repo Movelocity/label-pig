@@ -1,12 +1,16 @@
-
 import cv2
 import httpx
+import requests
 import numpy as np
 import io
 
-"""直接传bgr颜色的图"""
-async def image_detect_api(image: np.ndarray, caption: str = 'fruit'):
-    url = "http://112.74.74.13:30770/groundingdino/detect"
+# BASE_URL = "http://112.74.74.13:30770"
+BASE_URL = "http://localhost:8081"
+
+
+async def image_detect_api_async(image: np.ndarray, caption: str = 'fruit'):
+    """ image颜色通道为 bgr """
+    url = BASE_URL + "/groundingdino/detect"
     # Encode the image to a memory buffer
     _, buffer = cv2.imencode('.jpg', image)  # You can change .png to .jpg if needed
     
@@ -19,21 +23,50 @@ async def image_detect_api(image: np.ndarray, caption: str = 'fruit'):
         'caption': (None, caption),
         'return_type': (None, 'annotation')
     }
+    print("send to: "+url)
+    # try:
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, files=files, timeout=10)
+        print(response)
+        if response.status_code == 200:  # 请求成功
+            result = response.json()
+            result['msg'] = "success"
+            return result
+        return {"msg": f"{response.status_code}, {response.text}"}  # 状态码不是200，则认为是错误
+    # except Exception as e:
+    #     # 捕获异常并返回具体的错误信息
+    #     error_message = f"请求出错: {str(e)}"
+    #     return {"msg": error_message}
+
+
+def image_detect_api(image: np.ndarray, caption: str = 'fruit'):
+    """ image颜色通道为 bgr """
+    url = BASE_URL + "/groundingdino/detect"
+    # Encode the image to a memory buffer
+    _, buffer = cv2.imencode('.jpg', image)  # You can change .png to .jpg if needed
     
+    # Create a BytesIO object
+    image_bytes = io.BytesIO(buffer)
+
+    # Prepare files for the request
+    files = {
+        'image': ('image.jpg', image_bytes, 'image/jpeg'),  # Specify content type
+        'caption': (None, caption),
+        'return_type': (None, 'annotation')
+    }
+    # print("send to: " + url)
+    
+    # Send the request using requests library
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, files=files)
-            
-            if response.status_code == 200:  # 请求成功
-                result = response.json()
-                result['msg'] = "success"
-                return result
-            return {"msg": f"{response.status_code}, {response.text}"}  # 状态码不是200，则认为是错误
-    except Exception as e:
-        # 捕获异常并返回具体的错误信息
-        error_message = f"请求出错: {str(e)}"
-        return {"msg": error_message}
-        
+        response = requests.post(url, files=files, timeout=10)
+        if response.status_code == 200:  # 请求成功
+            result = response.json()
+            result['msg'] = "success"
+            return result
+        return {"msg": f"{response.status_code}, {response.text}"}
+    except requests.RequestException as e:
+        return {"msg": str(e)}
+
 """
 {
     "boxes":[
