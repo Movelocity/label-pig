@@ -3,14 +3,12 @@ import cv2
 import numpy as np
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout,
-    QTableWidgetItem, QLineEdit
+    QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout, QLineEdit
 )
 import re
 
-
 # import asyncio
-import api as detection_api
+from . import api as detection_api
 
 def increment_name(input_str):
     # 使用正则表达式匹配 name 或 name+num 模式
@@ -31,10 +29,11 @@ def increment_name(input_str):
     
 
 class ImageLabeling(QWidget):
-    def __init__(self, image: np.ndarray, caption: str):
+    def __init__(self, image: np.ndarray, caption: str, emit_labels_fn: callable):
         super().__init__()
         self.image = image
         self.caption = caption
+        self.emit_labels_fn = emit_labels_fn
         self.annotations = []
         self.setWindowTitle("Image Annotation")
         self.setGeometry(100, 100, 800, 600)
@@ -50,11 +49,8 @@ class ImageLabeling(QWidget):
         self.table = QTableWidget(self)
         self.layout.addWidget(self.table)
 
-        # Update button
-        # self.update_btn = QPushButton("更新", self)
-        # self.update_btn.clicked.connect(self.update_annotations)
-        # self.layout.addWidget(self.update_btn)
         self.layout4buttons = QHBoxLayout()
+
         # Refresh button
         self.refresh_btn = QPushButton("刷新", self)
         self.refresh_btn.clicked.connect(self.update_annotations)
@@ -181,7 +177,8 @@ class ImageLabeling(QWidget):
             label = self.table.cellWidget(row, 4).text().strip().replace(' ', '_')
             saved_annotations.append((x, y, width, height, label))
 
-        print("Saved Annotations:", saved_annotations)
+        # print("Saved Annotations:", saved_annotations)
+        self.emit_labels_fn(saved_annotations)
 
     def save_and_close(self):
         self.save_annotations()

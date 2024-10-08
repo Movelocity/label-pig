@@ -4,8 +4,8 @@ import requests
 import numpy as np
 import io
 
-# BASE_URL = "http://112.74.74.13:30770"
-BASE_URL = "http://localhost:8081"
+BASE_URL = "http://112.74.74.13:30770"
+# BASE_URL = "http://localhost:8081"
 
 
 async def image_detect_api_async(image: np.ndarray, caption: str = 'fruit'):

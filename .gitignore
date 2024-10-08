@@ -129,8 +129,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-/pineapple.png
-/subtitles.txt
-/hunting_hog.mp4
-/demo.mp4
-/tests
+/videos/*
+!/videos/*.txt
+/labels/*
+!/labels/*.txt

@@ -1,12 +1,56 @@
 import cv2
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QSlider, QLineEdit
+import numpy as np
+
+class PlayState:
+    def __init__(self):
+        self.slider: QSlider = None
+        self.time_input: QLineEdit = None
+        self.seek_video_fn: function = None
+        self.frame_rate = 1
+        self.max_frame = 2
+        self.time_text: str = ""
+
+    def update_position(self, frame_position:int, frame_rate):
+        if self.slider is not None:
+            self.slider.setValue(frame_position)
+        if self.time_input is not None:
+            minute_float = frame_position / frame_rate
+            minute = int(minute_float / 60)
+            second = int(minute_float % 60)
+            self.time_text = f"{minute:02d}:{second:02d}"
+            self.time_input.setText(self.time_text)
+
+    def set_max_frame(self, max_frame):
+        print("set slider max: ", max_frame)
+        if self.slider is not None:
+            self.slider.setMaximum(max_frame)  # 视频总帧数
+        self.max_frame = max_frame
+
+    def seek_video_by_slider(self):
+        frame_position = self.slider.value()
+        print("seek to: ", frame_position)
+        if self.seek_video_fn is not None:
+            self.seek_video_fn(frame_position)
+        
+    def seek_video_by_time(self):
+        time_str = self.time_input.text()
+        print('time: ', time_str)
+        if not time_str: return
+
+        if ":" in time_str:
+            minute, second = map(int, time_str.split(":"))
+            frame_position = (minute * 60 + second) * self.frame_rate
+            if frame_position > self.max_frame: return
+            if self.seek_video_fn is not None:
+                self.seek_video_fn(frame_position)
 
 class VideoPlayer(QGraphicsView):
     def __init__(self, video_path, play_state):
         super().__init__()
-        self.play_state = play_state
+        self.play_state: PlayState = play_state
         self.frame_rate = 30  # 框架慢的因素,其实1s不足以刷新30帧,但你确实可以看到所有帧
         self.play_state.frame_rate = self.frame_rate
         # 创建场景和图片项目
@@ -56,7 +100,7 @@ class VideoPlayer(QGraphicsView):
     def display_frame(self, frame):
         # frame 应该直接从 ret, frame = self.cap.read() 得到
         # 将帧从BGR格式转换为RGB格式
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = frame.shape
         bytes_per_line = ch * w
         image = QImage(frame.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)

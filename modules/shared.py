@@ -1,3 +1,13 @@
+# 项目全局变量
+
+open_video_fn: callable = None
+
+def bind_open_video_fn(fn):
+    global load_video_fn
+    load_video_fn = fn
+
+def get_open_video_fn():
+    return load_video_fn
 
 stylesheet = """
 QWidget {
