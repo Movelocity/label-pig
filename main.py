@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
         super(QMainWindow, self).__init__()
         self.video_list_widget = None
         self.setWindowTitle("Video Player")
-        self.resize(800, 600)
+        self.resize(900, 600)
 
         loading_text = QLabel("Loading...")
         self.setCentralWidget(loading_text)
@@ -23,16 +23,17 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(video_list_widget)
 
         self.halt_close_event = False
-
+        self.monitor = None
         def open_video_fn(video_path):
-            monitor = Monitor(video_path)
-            self.setCentralWidget(monitor)
+            self.monitor = Monitor(video_path)
+            self.setCentralWidget(self.monitor)
             self.halt_close_event = True
             print('loading video...')
         bind_open_video_fn(open_video_fn)
 
     def closeEvent(self, event):
         if self.halt_close_event:
+            self.monitor.close()
             video_list_widget = VideoListWidget("./videos")
             self.setCentralWidget(video_list_widget)
             event.ignore()

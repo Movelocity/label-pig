@@ -18,7 +18,7 @@ QLineEdit, QTextEdit, QPushButton {
   background-color: #3c3c3c;
   border: 1px solid #5a5a5a;
   border-radius: 5px;
-  padding: 5px;
+  padding: 0 5px;
 }
 QSlider::groove:horizontal {
   border: 1px solid #5a5a5a;

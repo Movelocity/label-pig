@@ -87,8 +87,5 @@ class Monitor(QWidget):
         self.currentLabeling.show()
     
 
-    def closeEvent(self, event):
-        # 阻止关闭事件，并弹出提示框
-        
-        print('guanbi')
-        event.accept()
+    def close(self):
+        self.video_player.release()

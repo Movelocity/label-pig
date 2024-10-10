@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt, QEvent
 import cv2  # 需要 OpenCV 生成缩略图
 import numpy as np
 from . shared import get_open_video_fn
+import subprocess
 
 class VideoItem(QWidget):
     def __init__(self, file_path):
@@ -42,7 +43,7 @@ class VideoItem(QWidget):
         self.rename_input = QLineEdit()
         self.rename_input.setVisible(False)
         self.rename_input.returnPressed.connect(self.rename_video_from_input)
-        
+
         def open_file():
             print("open", self.file_path)
             open_video_fn = get_open_video_fn()
@@ -69,7 +70,7 @@ class VideoItem(QWidget):
         cap = cv2.VideoCapture(self.file_path)
         success, frame = cap.read()
         cap.release()
-        
+
         if success:
             frame = cv2.resize(frame, (160, 90))  # 缩略图大小
             frame: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

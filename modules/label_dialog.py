@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout, QLineEdit
 )
 import re
-
+from . label_dialog import Label
 # import asyncio
 from . import api as detection_api
 

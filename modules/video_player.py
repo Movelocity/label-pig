@@ -11,7 +11,7 @@ class PlayState:
         self.seek_video_fn: function = None
         self.frame_rate = 1
         self.max_frame = 2
-        self.time_text: str = ""
+        self.time_text: str = "00:00"
 
     def update_position(self, frame_position:int, frame_rate):
         if self.slider is not None:
@@ -109,8 +109,19 @@ class VideoPlayer(QGraphicsView):
 
     def next_frame(self):
         ret, frame = self.cap.read()
+
         if ret:
-            self.display_frame(frame)
+            # 获取原始帧的宽和高
+            original_height, original_width = frame.shape[:2]
+
+            # 计算新的高度，以保持宽高比例
+            new_width = 800
+            new_height = int((new_width / original_width) * original_height)
+
+            # 调整帧的大小
+            resized_frame = cv2.resize(frame, (new_width, new_height))
+            self.display_frame(resized_frame)
+
             frame_position = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
             self.play_state.update_position(frame_position, self.frame_rate)
         else:
@@ -121,3 +132,5 @@ class VideoPlayer(QGraphicsView):
         self.cap.release()
         event.accept()
 
+    def release(self):
+        self.cap.release()
