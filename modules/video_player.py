@@ -35,7 +35,7 @@ class PlayState:
         if self.seek_video_fn is not None:
             self.seek_video_fn(frame_position)
         
-    def seek_video_by_time(self):
+    def seek_video_by_time_widget(self):
         time_str = self.time_input.text()
         print('time: ', time_str)
         if not time_str: return
@@ -46,6 +46,19 @@ class PlayState:
             if frame_position > self.max_frame: return
             if self.seek_video_fn is not None:
                 self.seek_video_fn(frame_position)
+    
+    def seek_video_by_time(self, timestamp): 
+        print('time: ', timestamp)
+        if not timestamp: return
+
+        if ":" in timestamp:
+            minute, second = map(int, timestamp.split(":"))
+            frame_position = (minute * 60 + second) * self.frame_rate
+            if frame_position > self.max_frame: return
+            if self.seek_video_fn is not None:
+                self.seek_video_fn(frame_position)
+
+            self.time_input.setText(timestamp)
 
 class VideoPlayer(QGraphicsView):
     def __init__(self, video_path, play_state):

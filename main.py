@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
 from modules.shared import stylesheet, bind_open_video_fn
 from modules.monitor import Monitor
 from modules.video_select import VideoListWidget
-
+from pathlib import Path
 app = QApplication(sys.argv)
 app.setStyleSheet(stylesheet)
 
@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
         super(QMainWindow, self).__init__()
         self.video_list_widget = None
         self.setWindowTitle("Video Player")
-        self.resize(900, 600)
+        self.resize(990, 600)
 
         loading_text = QLabel("Loading...")
         self.setCentralWidget(loading_text)
@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
 
         self.halt_close_event = False
         self.monitor = None
-        def open_video_fn(video_path):
+        def open_video_fn(video_path: Path):
             self.monitor = Monitor(video_path)
             self.setCentralWidget(self.monitor)
             self.halt_close_event = True

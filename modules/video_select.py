@@ -8,7 +8,7 @@ from PyQt6.QtCore import Qt, QEvent
 import cv2  # 需要 OpenCV 生成缩略图
 import numpy as np
 from . shared import get_open_video_fn
-import subprocess
+from pathlib import Path
 
 class VideoItem(QWidget):
     def __init__(self, file_path):
@@ -47,7 +47,8 @@ class VideoItem(QWidget):
         def open_file():
             print("open", self.file_path)
             open_video_fn = get_open_video_fn()
-            if open_video_fn is not None: open_video_fn(self.file_path)
+            if open_video_fn is not None: 
+                open_video_fn(Path(self.file_path))
         self.open_btn = QPushButton("打开")
         self.open_btn.clicked.connect(open_file)
 
@@ -141,8 +142,7 @@ class VideoListWidget(QScrollArea):
         self.setWidgetResizable(True)
         
         self.container = QWidget()
-        self.layout = QVBoxLayout()
-        
+        self.layout: QVBoxLayout = QVBoxLayout()
         self.container.setLayout(self.layout)
         self.setWidget(self.container)
         
@@ -154,7 +154,7 @@ class VideoListWidget(QScrollArea):
                 file_path = os.path.join(directory, file_name)
                 video_item = VideoItem(file_path)
                 self.add_video_item(video_item)
-
+        self.layout.addStretch()  # 底部留白
     def add_video_item(self, video_item):
         self.layout.addWidget(video_item)
         self.video_items.append(video_item)

@@ -1,12 +1,13 @@
 import sys
 import cv2
 import numpy as np
+from typing import List
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout, QLineEdit
 )
 import re
-from . label_dialog import Label
+from . label_manager import Label
 # import asyncio
 from . import api as detection_api
 
@@ -26,7 +27,8 @@ def increment_name(input_str):
         return f"{name}{num}"
     else:
         return f"{name}1"
-    
+
+# 输入框回可以触发整个表格和预览图的刷新
 
 class ImageLabeling(QWidget):
     def __init__(self, image: np.ndarray, caption: str, emit_labels_fn: callable):
@@ -36,7 +38,7 @@ class ImageLabeling(QWidget):
         self.emit_labels_fn = emit_labels_fn
         self.annotations = []
         self.setWindowTitle("Image Annotation")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 800)
 
         self.layout : QBoxLayout = QVBoxLayout()
         
@@ -56,6 +58,10 @@ class ImageLabeling(QWidget):
         self.refresh_btn.clicked.connect(self.update_annotations)
         self.layout4buttons.addWidget(self.refresh_btn)
 
+        self.add_label_btn = QPushButton("增加标签", self)
+        self.add_label_btn.clicked.connect(self.add_label)
+        self.layout4buttons.addWidget(self.add_label_btn)
+
         # Save button
         self.save_button = QPushButton("保存", self)
         self.save_button.clicked.connect(self.save_and_close)
@@ -67,7 +73,8 @@ class ImageLabeling(QWidget):
         # Load annotations from API
         self.load_annotations()
 
-    def load_image(self):  # 绘图
+    def refresh_image(self):  # 绘图
+        print("refresh_image")
         height, width, channel = self.image.shape
         bytes_per_line = 3 * width
 
@@ -135,7 +142,7 @@ class ImageLabeling(QWidget):
                 self.annotations[i].append(label)  # 默认标签
                 
             self.setup_table()
-        self.load_image()
+        self.refresh_image()
 
     def setup_table(self):
         self.table.setRowCount(len(self.annotations))
@@ -148,8 +155,9 @@ class ImageLabeling(QWidget):
 
         for row_idx, box in enumerate(self.annotations):
             for col_idx in range(4):
-                value = f"{box[col_idx]:.3f}"
+                value = f"{box[col_idx]:.3f}"  # 保留小数点后3位
                 item = QLineEdit(value)
+                item.returnPressed.connect(self.update_annotations)
                 self.table.setCellWidget(row_idx, col_idx, item)
 
             label_edit = QLineEdit(box[4])  # Default label from annotations
@@ -165,21 +173,37 @@ class ImageLabeling(QWidget):
             label = self.table.cellWidget(row, 4).text().strip().replace(' ', '_')
             self.annotations[row] = [x, y, width, height] + [label]  # Update annotation with new label
         
-        self.load_image()  # Reload image to reflect changes
+        self.refresh_image()  # Reload image to reflect changes
 
     def save_annotations(self):
-        saved_annotations = []
+        saved_annotations: List[Label] = []
         for row in range(self.table.rowCount()):
-            x = float(self.table.cellWidget(row, 0).text())
-            y = float(self.table.cellWidget(row, 1).text())
-            width = float(self.table.cellWidget(row, 2).text())
-            height = float(self.table.cellWidget(row, 3).text())
-            label = self.table.cellWidget(row, 4).text().strip().replace(' ', '_')
-            saved_annotations.append((x, y, width, height, label))
+            saved_annotations.append(Label(
+                cx=float(self.table.cellWidget(row, 0).text()), 
+                cy=float(self.table.cellWidget(row, 1).text()), 
+                w=float(self.table.cellWidget(row, 2).text()), 
+                h=float(self.table.cellWidget(row, 3).text()), 
+                name=self.table.cellWidget(row, 4).text().strip().replace(' ', '_')
+            ))
 
         # print("Saved Annotations:", saved_annotations)
         self.emit_labels_fn(saved_annotations)
 
+    def add_label(self):
+        template = [0.4, 0.4, 0.4, 0.4, 'new_label']
+        self.annotations.append(template)
+        length = len(self.annotations)
+        self.table.setRowCount(length)
+        row_idx = length - 1
+        for col_idx in range(4):
+            value = f"{template[col_idx]:.3f}"  # 保留小数点后3位
+            item = QLineEdit(value)
+            item.returnPressed.connect(self.update_annotations)
+            self.table.setCellWidget(row_idx, col_idx, item)
+
+        label_edit = QLineEdit(template[4])  # Default label from annotations
+        self.table.setCellWidget(row_idx, 4, label_edit)
+        self.refresh_image()
     def save_and_close(self):
         self.save_annotations()
         self.close()
