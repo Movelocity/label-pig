@@ -55,15 +55,18 @@ class ImageLabeling(QWidget):
 
         # Refresh button
         self.refresh_btn = QPushButton("刷新", self)
+        self.refresh_btn.setStyleSheet("background-color: #22c35e; height: 2em;")
         self.refresh_btn.clicked.connect(self.update_annotations)
         self.layout4buttons.addWidget(self.refresh_btn)
 
         self.add_label_btn = QPushButton("增加标签", self)
+        self.add_label_btn.setStyleSheet("background-color: #14b7a6; height: 2em;")
         self.add_label_btn.clicked.connect(self.add_label)
         self.layout4buttons.addWidget(self.add_label_btn)
 
         # Save button
         self.save_button = QPushButton("保存", self)
+        self.save_button.setStyleSheet("background-color: #0ea5e8; height: 2em;")
         self.save_button.clicked.connect(self.save_and_close)
         self.layout4buttons.addWidget(self.save_button)
         self.layout.addLayout(self.layout4buttons)

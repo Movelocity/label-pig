@@ -24,7 +24,7 @@ class PlayState:
             self.time_input.setText(self.time_text)
 
     def set_max_frame(self, max_frame):
-        print("set slider max: ", max_frame)
+        print("detected frames:", max_frame)
         if self.slider is not None:
             self.slider.setMaximum(max_frame)  # 视频总帧数
         self.max_frame = max_frame

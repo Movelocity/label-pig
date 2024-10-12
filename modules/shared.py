@@ -2,6 +2,11 @@
 
 from pathlib import Path
 
+def get_style(name, style, hover):
+    style = style.replace('bg:', 'background-color:')
+    hover = hover.replace('bg:', 'background-color:')
+    return name + " {" + style + "} " + name+ ":hover {" + hover + "}"
+
 def open_video_fn(video_path: Path) -> None:
     """
     打开视频文件的函数。
