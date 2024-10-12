@@ -138,7 +138,7 @@ class ImageLabeling(QWidget):
             for i in range(len(self.annotations)):
                 label = labeling_result['phrases'][i]
                 label = increment_name(label)
-                if label in label_set:
+                while label in label_set:
                     label = increment_name(label)
                 label_set.add(label)
                 self.annotations[i].append(label)  # 默认标签

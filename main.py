@@ -1,6 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from modules.shared import stylesheet, bind_open_video_fn
 from modules.monitor import Monitor
 from modules.video_select import VideoListWidget
@@ -15,6 +16,7 @@ class MainWindow(QMainWindow):
         self.video_list_widget = None
         self.setWindowTitle("Video Player")
         self.resize(990, 600)
+        self.setWindowIcon(QIcon("./favicon.ico"))
 
         loading_text = QLabel("Loading...")
         self.setCentralWidget(loading_text)
