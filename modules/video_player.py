@@ -37,7 +37,6 @@ class PlayState:
         
     def seek_video_by_time_widget(self):
         time_str = self.time_input.text()
-        print('time: ', time_str)
         if not time_str: return
 
         if ":" in time_str:
@@ -48,7 +47,6 @@ class PlayState:
                 self.seek_video_fn(frame_position)
     
     def seek_video_by_time(self, timestamp): 
-        print('time: ', timestamp)
         if not timestamp: return
 
         if ":" in timestamp:
@@ -110,10 +108,11 @@ class VideoPlayer(QGraphicsView):
             self.timer.stop()
             self.is_playing = False
 
-    def display_frame(self, frame):
+    def display_frame(self, frame, inv_channel=True):
         # frame 应该直接从 ret, frame = self.cap.read() 得到
         # 将帧从BGR格式转换为RGB格式
-        frame: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if inv_channel:
+            frame: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = frame.shape
         bytes_per_line = ch * w
         image = QImage(frame.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
@@ -139,6 +138,9 @@ class VideoPlayer(QGraphicsView):
             self.play_state.update_position(frame_position, self.frame_rate)
         else:
             self.stop()  # 视频播放完毕，停止定时器
+
+    def set_frame_data(self, frame):
+        self.display_frame(frame, inv_channel=False)
 
     def closeEvent(self, event):
         # 关闭视频文件

@@ -7,9 +7,8 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QBoxLayout, QLineEdit
 )
 import re
-from . label_manager import Label
-# import asyncio
-from . import api as detection_api
+from .. label_manager import Label
+from .. import api as detection_api
 
 def increment_name(input_str):
     # 使用正则表达式匹配 name 或 name+num 模式

@@ -3,84 +3,15 @@ import cv2
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout, QPushButton, QSlider,
-    QWidget, QHBoxLayout, QLineEdit, QBoxLayout, QTextEdit, QDockWidget, QListWidget, QListWidgetItem
+    QWidget, QHBoxLayout, QLineEdit, QBoxLayout, 
 )
-from PyQt6.QtGui import QCursor
+
 from typing import List
 from .label_manager import Label, LabelManager
 from .video_player import VideoPlayer, PlayState
-from .label_dialog import ImageLabeling
+from .label_ui import ImageLabeling, LabelingDock, LabelListWidget, plot_annotations
 from pathlib import Path
-from .shared import get_style
 
-class LabelListWidget(QDockWidget):
-    def __init__(self, label_manager: LabelManager, jump_to_timestamp: callable):
-        super().__init__()
-        self.label_manager = label_manager
-        self.jump_to_timestamp = jump_to_timestamp
-        self.label_list = self.label_manager.time_points
-        
-        # Create a QListWidget to hold the labels
-        self.list_widget = QListWidget()
-        self.setWidget(self.list_widget)
-        self.setMaximumWidth(140)
-        # Optionally set a title for the DockWidget
-        self.setWindowTitle("时间轴标签列表")
-
-        self.update_ui()
-
-        # Connect item clicked signal
-        self.list_widget.itemClicked.connect(self._jump_to_timestamp)
-
-    def _jump_to_timestamp(self, item: QListWidgetItem):
-        # Call the jump function with the timestamp from the clicked item
-        timestamp = item.text()
-        self.jump_to_timestamp(timestamp)
-
-    def add_label(self, label: Label):
-        self.label_list.append(label)
-        self.update_ui()
-
-    def update_ui(self):
-        # Clear the existing items
-        self.list_widget.clear()
-
-        # Add each timestamp as an item in the QListWidget
-        for timestamp in self.label_list:
-            item = QListWidgetItem(timestamp)
-            self.list_widget.addItem(item)
-
-class LabelingDock(QDockWidget):
-    def __init__(self, label_current_frame: callable):
-        super().__init__()
-        self.setWindowTitle('标注工具')
-        # 创建一个 QWidget 作为 dock 的主内容
-        dock_content = QWidget()
-
-        # 初始布局为水平布局
-        controls_layout = QVBoxLayout(dock_content)
-
-        # 创建控件
-        # auto_label_hint = QLabel('自动标注：')
-        labeling_prompt = QTextEdit()
-        labeling_prompt.setPlaceholderText('可指定多种物体,以 . 分隔: cat . dog . bird')
-        labeling_prompt.setText('pig')
-        auto_label_btn = QPushButton('自动标注')
-        auto_label_btn.setStyleSheet(get_style('QPushButton', 'bg: #06b6d3; height: 2em; font-weight:bold', 'bg: #21d2ed;'))
-        auto_label_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        def auto_label():
-            prompt = labeling_prompt.toPlainText()
-            self.label_current_frame(prompt)
-
-        self.label_current_frame = label_current_frame
-        auto_label_btn.clicked.connect(auto_label)
-
-        # controls_layout.addWidget(auto_label_hint)
-        controls_layout.addWidget(labeling_prompt)
-        controls_layout.addWidget(auto_label_btn)
-
-        # 设置 dock 的内容
-        self.setWidget(dock_content)
 
 class Monitor(QWidget):
     def __init__(self, video_path: Path):
@@ -100,7 +31,11 @@ class Monitor(QWidget):
         self.labeling_dock = LabelingDock(self.label_current_frame)
 
         self.label_manager = LabelManager(video_path)
-        self.label_list_dock: LabelListWidget = LabelListWidget(self.label_manager, jump_to_timestamp=self.jump_to_timestamp)
+        self.label_list_dock: LabelListWidget = LabelListWidget(
+            self.label_manager, 
+            jump_to_timestamp=self.jump_to_timestamp,
+            to_next_frame=self.video_player.next_frame
+        )
 
         extra_layout.addLayout(main_layout)
         # extra_layout.addWidget(self.label_list_widget)
@@ -156,6 +91,9 @@ class Monitor(QWidget):
     
     def jump_to_timestamp(self, timestamp):
         self.play_state.seek_video_by_time(timestamp)
+        frame = self.video_player.current_frame
+        plot = plot_annotations(frame, self.label_manager.get_label_as_list(timestamp))
+        self.video_player.set_frame_data(plot)
 
     def close(self):
         self.video_player.release()

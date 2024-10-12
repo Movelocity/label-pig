@@ -2,10 +2,15 @@
 
 from pathlib import Path
 
-def get_style(name, style, hover):
+def get_style(name, style='', hover=''):
     style = style.replace('bg:', 'background-color:')
     hover = hover.replace('bg:', 'background-color:')
-    return name + " {" + style + "} " + name+ ":hover {" + hover + "}"
+    css = ""
+    if style != '':
+        css += name + " {" + style + "}"
+    if hover != '':
+        css += name + ":hover {" + hover + "}"
+    return css
 
 def open_video_fn(video_path: Path) -> None:
     """

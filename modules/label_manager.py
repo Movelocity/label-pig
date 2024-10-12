@@ -38,8 +38,13 @@ class LabelManager:
     def __init__(self, video_path: Path):
         self.video_path = video_path
         self.time_points = []
-        self.labels: Dict[Label] = {}  # 时间点: 标签组
+        self.labels: Dict[List[Label]] = {}  # 时间点: 标签组
         self.load()
+
+    def get_label_as_list(self, timestamp: str):
+        lbs: List[Label] = self.labels.get(timestamp, [])
+        result = [[lb.cx, lb.cy, lb.w, lb.h, lb.name] for lb in lbs]
+        return result
 
     def add_labels(self, timestamp: str, labels: List[Label]):
         """增加一个时间点上的多个物体标签"""
@@ -47,6 +52,11 @@ class LabelManager:
         if timestamp not in self.time_points:
             self.time_points.append(timestamp)
             self.time_points.sort()
+        self.save()
+
+    def remove_label(self, timestamp: str):
+        self.labels.pop(timestamp, None)
+        self.time_points.remove(timestamp)
         self.save()
 
     def save(self):
