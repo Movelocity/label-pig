@@ -17,8 +17,8 @@ class LabelingDock(QDockWidget):
 
         # 创建控件
         labeling_prompt = QTextEdit()
-        labeling_prompt.setPlaceholderText('可指定多种物体,以 . 分隔: cat . dog . bird')
-        labeling_prompt.setText('pig')
+        labeling_prompt.setPlaceholderText('可指定多种物体。以 . 分隔:\ncat . dog . bird')
+        # labeling_prompt.setText('pig')
         auto_label_btn = QPushButton('新建标注')
         auto_label_btn.setStyleSheet(get_style('QPushButton', 'bg: #06b6d3; height: 2em; font-weight:bold', 'bg: #21d2ed;'))
         auto_label_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))

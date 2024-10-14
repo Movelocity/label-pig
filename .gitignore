@@ -133,4 +133,5 @@ dmypy.json
 !/videos/*.txt
 /labels/*
 !/labels/*.txt
-service/groundingdino/weights
+service/groundingdino/weights/*
+!/service/groundingdino/weights/*.txt

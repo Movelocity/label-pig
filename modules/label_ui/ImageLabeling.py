@@ -86,7 +86,7 @@ class ImageLabeling(QWidget):
         # Define a list of colors for different boxes
         colors = [
             (230, 100, 0), (0, 177, 177), (0, 0, 222),
-            (211, 222, 0), (200, 0, 200), (0, 255, 255)
+            (211, 222, 0), (200, 0, 200), (60, 40, 81)
         ]
 
         # Calculate font scale based on image size

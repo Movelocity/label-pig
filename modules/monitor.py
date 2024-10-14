@@ -78,6 +78,7 @@ class Monitor(QWidget):
             self.play_video()
 
     def label_current_frame(self, caption):
+        self.pause_video()
         image = self.video_player.current_frame
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # caption = self.labeling_prompt.text()
