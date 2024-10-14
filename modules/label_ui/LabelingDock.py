@@ -24,6 +24,8 @@ class LabelingDock(QDockWidget):
         auto_label_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         def auto_label():
             prompt = labeling_prompt.toPlainText()
+            if prompt == '':
+                return
             self.label_current_frame(prompt)
 
         self.label_current_frame = label_current_frame
