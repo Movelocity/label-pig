@@ -84,7 +84,7 @@ class Monitor(QWidget):
         # caption = self.labeling_prompt.text()
 
         def emit_labels_fn(labels: List[Label]):
-            self.label_manager.add_labels(timestamp=self.play_state.time_text, labels=labels)
+            self.label_manager.add_labels(timestamp=self.play_state.get_curr_time(), labels=labels)
             self.label_list_dock.update_ui()
             # print(f"{self.play_state.time_text} | {[str(label) for label in labels]}")
         self.currentLabeling = ImageLabeling(image=image, caption=caption, emit_labels_fn=emit_labels_fn)

@@ -34,7 +34,8 @@ class PlayState:
         print("seek to: ", frame_position)
         if self.seek_video_fn is not None:
             self.seek_video_fn(frame_position)
-        
+        self.frame_position = frame_position
+
     def seek_video_by_time_widget(self):
         time_str = self.time_input.text()
         if not time_str: return
@@ -47,16 +48,41 @@ class PlayState:
                 self.seek_video_fn(frame_position)
     
     def seek_video_by_time(self, timestamp): 
-        if not timestamp: return
+        if not timestamp:
+            return
 
         if ":" in timestamp:
-            minute, second = map(int, timestamp.split(":"))
-            frame_position = (minute * 60 + second) * self.frame_rate
-            if frame_position > self.max_frame: return
+            parts = timestamp.split(":")
+            minute = int(parts[0])
+            if '.' in parts[1]:
+                second, millisecond = map(int, parts[1].split('.'))
+            else:
+                second = int(parts[1])
+                millisecond = 0
+
+            frame_position = (minute * 60 + second + millisecond / 1000) * self.frame_rate
+            frame_position = int(frame_position)
+
+            if frame_position > self.max_frame:
+                return
+
             if self.seek_video_fn is not None:
                 self.seek_video_fn(frame_position)
 
             self.time_input.setText(timestamp)
+
+    def get_curr_time(self) -> str:
+        # Calculate the total seconds from the frame position
+        frame_position = self.slider.value()
+        total_seconds = frame_position / self.frame_rate
+
+        # Extract minutes, seconds, and milliseconds
+        minutes = int(total_seconds // 60)
+        seconds = int(total_seconds % 60)
+        milliseconds = int((total_seconds - int(total_seconds)) * 1000)
+
+        # Format the time string as mm:ss.xxx
+        return f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
 class VideoPlayer(QGraphicsView):
     def __init__(self, video_path, play_state):
