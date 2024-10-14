@@ -34,3 +34,4 @@ class LabelingDock(QDockWidget):
 
         # 设置 dock 的内容
         self.setWidget(dock_content)
+        self.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable | QDockWidget.DockWidgetFeature.DockWidgetMovable)

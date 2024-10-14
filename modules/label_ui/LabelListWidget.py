@@ -21,6 +21,7 @@ class LabelListWidget(QDockWidget):
         self.setWindowTitle("时间轴标签列表")
 
         self.update_ui()
+        self.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable | QDockWidget.DockWidgetFeature.DockWidgetMovable)
 
     def add_label(self, label: Label):
         self.label_list.append(label)
