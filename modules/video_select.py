@@ -171,7 +171,14 @@ class VideoItem(QWidget):
                 return
         new_file_path = self.video_path / new_name
         try:
-            self.video_path.rename(new_file_path)
+            if new_file_path.exists():
+                QMessageBox.critical(self, "错误", "文件已存在！")
+                return
+            
+            label_file_path = Path(f'./labels/{self.video_path.stem}.json')
+            if label_file_path.exists():
+                label_file_path.rename(f'./labels/{new_file_path.stem}.json')
+            self.video_path.rename(f'./videos/{new_name}')
             self.video_path = new_file_path
             self.name_label.setText(new_name)
             self.rename_input.setVisible(False)

@@ -24,21 +24,21 @@ def image_detect_api(image: np.ndarray, caption: str = 'fruit'):
     }
     
     # 返回样本
-    # resultObj = {  
-    #     'msg': 'success'
-    #     'boxes': [
-    #         [0.2300889492034912, 0.43166184425354004, 0.42723730206489563, 0.5608834624290466],  // [cx, cy, w, h]
-    #         [0.7489202618598938, 0.45753565430641174, 0.4995116591453552, 0.7285897731781006]
-    #     ], 
-    #     'logits': [0.5680023431777954, 0.5597519278526306], 
-    #     'phrases': ['fruit', 'fruit']
-    # }
-    try:
-        response = requests.post(url, files=files, timeout=20)
-        if response.status_code == 200:  # 请求成功
-            resultObj = response.json()
-            resultObj['msg'] = "success"
-            return resultObj
-        return {"msg": f"{response.status_code}, {response.text}"}
-    except requests.RequestException as e:
-        return {"msg": str(e)}
+    resultObj = {  
+        'msg': 'success',
+        'boxes': [
+            [0.2300889492034912, 0.43166184425354004, 0.42723730206489563, 0.5608834624290466],#  // [cx, cy, w, h]
+        ], 
+        'logits': [0.5680023431777954], 
+        'phrases': [caption]
+    }
+    return resultObj
+    # try:
+    #     response = requests.post(url, files=files, timeout=20)
+    #     if response.status_code == 200:  # 请求成功
+    #         resultObj = response.json()
+    #         resultObj['msg'] = "success"
+    #         return resultObj
+    #     return {"msg": f"{response.status_code}, {response.text}"}
+    # except requests.RequestException as e:
+    #     return {"msg": str(e)}
